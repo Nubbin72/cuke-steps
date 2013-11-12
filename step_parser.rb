@@ -35,11 +35,11 @@ class StepParser
       case line
       when /^ *#/
         @comments << line
-      when /^(Given|When|Then|Before|After|AfterStep|Transform) /
+      when /^(Given|When|Then|Before|After|AfterStep|Transform)( |\()/
         unread(line)
         parse_step
         @comments = []
-      when /^\s+(Given|When|Then|Before|After|AfterStep|Transform) /
+      when /^\s+(Given|When|Then|Before|After|AfterStep|Transform)( |\()/
         puts "WARNING:  Indented step definition in file #{@current_file}:  #{line}"
         @comments = []
       else
@@ -50,16 +50,43 @@ class StepParser
   end
 
   def parse_step
-    type = parse_step_type(@lines.first)
+    #type = parse_step_type(@lines.first)
     name = parse_step_name(@lines.first)
     line_number = @line_number + 1
     code = @comments
+    headers = parse_headers(@comments)
     line = ""
     while !@lines.empty? && !(line =~ /^end\s*$/)
       line = next_line
       code << line
     end
-    @steps << { :type => type, :name => name, :filename => @current_file, :code => code, :line_number => line_number }
+
+    @steps << { type: 'Step',
+                name: name,
+                filename: @current_file,
+                code: code,
+                line_number: line_number,
+                comments: @comments,
+                headers: headers,
+                anchor: "#{File.basename(@current_file, '.*')}_#{line_number}"
+    }
+  end
+
+  def parse_headers(lines)
+    headers = {}
+    lines.each do |line|
+      if line.match /^ *# *@([A-Za-z]+).*/
+        tag = line.sub(/^ *# *@([A-Za-z]+).*/, '\1')
+        value = line.sub(/^ *# *@([A-Za-z]+) +(.*?)/, '\2').gsub('\ ', ' ')
+        if headers[tag]
+          headers[tag] = [headers[tag]] unless headers[tag].is_a?(Array)
+          headers[tag] << value
+        else
+          headers[tag] = value unless tag.nil? or value.nil?
+        end
+      end
+    end
+    headers
   end
 
   def parse_step_type(line)
@@ -67,7 +94,7 @@ class StepParser
   end
 
   def parse_step_name(line)
-    line = line.sub(/^(Given|When|Then|Transform) +\/\^?(.*?)\$?\/.*/, '\1 \2')
+    line = line.sub(/^(Given|When|Then|Transform) *(\()? *\/\^?(.*?)\$?\/.*/, '\3')
     line = line.gsub('\ ', ' ')
     line
   end

@@ -56,41 +56,33 @@ puts "Writing output to file '#{options[:file]}'"
 
 # Sort primarily by step type, secondarily by step definition
 sorter = lambda do |a,b|
-  if a[:type] == b[:type]
-    a[:name].downcase <=> b[:name].downcase
-  else
-    weight = { "Given" => 1, "When" => 2, "Then" => 3, "Transform" => 4, "Before" => 5, "After" => 6, "AfterStep" => 7 }
-    wa = weight[a[:type]]
-    wb = weight[b[:type]]
-    wa <=> wb
-  end
+  a[:name].downcase <=> b[:name].downcase
 end
 
 
 # Read files and output
 all_steps = []
+file_list = []
 output.header
 dirs.each do |dir|
   dir = dir.sub(/\/+$/, "")
-  s = StepParser.new
   Dir.glob("#{dir}/**/*.rb") do |file|
+    file_list << file
+    s = StepParser.new
     s.read(file)
+    steps = s.steps
+    all_steps += steps
+    output.start_file(file)
+    steps.sort!(&sorter)
+    steps.each { |s| output.step(s) }
+    output.end_file
   end
-  steps = s.steps
-  all_steps += steps
-
-  output.start_directory(dir)
-  steps.sort!(&sorter)
-  steps.each { |s| output.step(s) }
-  output.end_directory
 end
 
-if dirs.size > 1
-  output.start_all
-  all_steps.sort!(&sorter)
-  all_steps.each { |s| output.step(s) }
-  output.end_all
-end
+output.start_all(file_list)
+all_steps.sort!(&sorter)
+all_steps.each { |s| output.step_link(s) }
+output.end_all
 
 output.footer
 output.close
