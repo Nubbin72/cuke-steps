@@ -1,8 +1,11 @@
+# frozen_string_literal: true
+
 # Class that parses step definitions from Ruby files
 
+# Step Parser
 class StepParser
-
   attr_reader :steps
+
   def initialize
     @steps = []
   end
@@ -13,7 +16,6 @@ class StepParser
     @lines = IO.read(file).split(/\r?\n/)
     parse_lines
   end
-
 
   private
 
@@ -29,17 +31,16 @@ class StepParser
 
   def parse_lines
     @comments = []
-    while not @lines.empty?
-
+    until @lines.empty?
       line = next_line
       case line
       when /^ *#/
         @comments << line
-      when /^(Given|When|Then|Before|After|AfterStep|Transform)( |\()/
+      when /^(Given|When|Then|And|Before|After|AfterStep|Transform)( |\()/
         unread(line)
         parse_step
         @comments = []
-      when /^\s+(Given|When|Then|Before|After|AfterStep|Transform)( |\()/
+      when /^\s+(Given|When|Then|And|Before|After|AfterStep|Transform)( |\()/
         puts "WARNING:  Indented step definition in file #{@current_file}:  #{line}"
         @comments = []
       else
@@ -50,15 +51,14 @@ class StepParser
   end
 
   def parse_step
-    #type = parse_step_type(@lines.first)
-    name = parse_step_name(@lines.first)
+    name = parse_step_name(@lines.first).split("') do")[0].concat("')")
     line_number = @line_number + 1
-    code = @comments
+    code = []
     headers = parse_headers(@comments)
-    line = ""
-    while !@lines.empty? && !(line =~ /^end\s*$/)
+    line = ''
+    while !@lines.empty? && (line !~ /^end\s*$/)
       line = next_line
-      code << line
+      code << line unless line.start_with?('#')
     end
 
     @steps << { type: 'Step',
@@ -68,22 +68,21 @@ class StepParser
                 line_number: line_number,
                 comments: @comments,
                 headers: headers,
-                anchor: "#{File.basename(@current_file, '.*')}_#{line_number}"
-    }
+                anchor: "#{File.basename(@current_file, '.*')}_#{line_number}" }
   end
 
   def parse_headers(lines)
     headers = {}
     lines.each do |line|
-      if line.match /^ *# *@([A-Za-z]+).*/
-        tag = line.sub(/^ *# *@([A-Za-z]+).*/, '\1')
-        value = line.sub(/^ *# *@([A-Za-z]+) +(.*?)/, '\2').gsub('\ ', ' ')
-        if headers[tag]
-          headers[tag] = [headers[tag]] unless headers[tag].is_a?(Array)
-          headers[tag] << value
-        else
-          headers[tag] = value unless tag.nil? or value.nil?
-        end
+      next unless line.match(/^ *# @(\w+).*/)
+
+      tag = line.sub(/^ *# @(\w+).*/, '\1')
+      value = line.sub(/^ *# *@(\w+) (.*)/, '\2').gsub('\ ', ' ')
+      if headers[tag]
+        headers[tag] = [headers[tag]] unless headers[tag].is_a?(Array)
+        headers[tag] << value
+      else
+        headers[tag] = value unless tag.nil? || value.nil?
       end
     end
     headers
@@ -94,9 +93,7 @@ class StepParser
   end
 
   def parse_step_name(line)
-    line = line.sub(/^(Given|When|Then|Transform) *(\()? *\/\^?(.*?)\$?\/.*/, '\3')
-    line = line.gsub('\ ', ' ')
-    line
+    line = line.sub(%r{^(Given|When|Then|And|Transform) *(\()? */\^?(.*?)\$?/.*}, '\3')
+    line.gsub('\ ', ' ')
   end
-
 end

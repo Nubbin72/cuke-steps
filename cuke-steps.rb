@@ -1,50 +1,39 @@
 #!/usr/bin/env ruby
-#-*- encoding: utf-8 -*-
+# frozen_string_literal: true
 
 require 'optparse'
 
 require_relative 'step_parser'
-require_relative 'confluence_step_outputter'
 require_relative 'html_step_outputter'
-
 
 # Parse command line
 options = {}
-opts = OptionParser.new do |opts|
-  opts.banner = "Usage: cuke-steps.rb [options] <directories...>"
+opts = OptionParser.new do |opts_|
+  opts_.banner = 'Usage: cuke-steps.rb [options] <directories...>'
 
-  opts.on("-o", "--output FILE", "Output to FILE") do |file|
+  opts_.on('-o', '--output FILE', 'Output to FILE') do |file|
     options[:file] = file
   end
-  opts.on("-f", "--format FMT", "Select output format: cf, html") do |format|
+  opts_.on('-f', '--format FMT', 'Select output format: html') do |format|
     options[:format] = format
   end
 end
 opts.parse!(ARGV)
 
 # Default output options
-if options[:file] && !options[:format]
-  options[:format] = options[:file].sub(/^.*\./, "")
-end
-if !options[:format]
-  options[:format] = "html"
-end
-if options[:format] && !options[:file]
-  options[:file] = "steps.#{options[:format]}"
-end
-
+options[:format] = options[:file].sub(/^.*\./, '') if options[:file] && !options[:format]
+options[:format] = 'html' unless options[:format]
+options[:file] = "steps.#{options[:format]}" if options[:format] && !options[:file]
 
 # All other arguments are treated as input directories
 dirs = ARGV
-if dirs.size == 0
-  puts "No source directories provided, use -h for help"
+if dirs.size.zero?
+  puts 'No source directories provided, use -h for help'
   exit 1
 end
 
 # Setup output
 case options[:format]
-when 'cf'
-  output = ConfluenceStepOutputter.new(options[:file])
 when 'html'
   output = HtmlStepOutputter.new(options[:file])
 else
@@ -53,36 +42,34 @@ else
 end
 puts "Writing output to file '#{options[:file]}'"
 
-
-# Sort primarily by step type, secondarily by step definition
-sorter = lambda do |a,b|
+# Sort step type name
+sorter = lambda do |a, b|
   a[:name].downcase <=> b[:name].downcase
 end
 
-
-# Read files and output
-all_steps = []
+# Read files
 file_list = []
-output.header
 dirs.each do |dir|
-  dir = dir.sub(/\/+$/, "")
+  dir = dir.sub(%r{/+$}, '')
   Dir.glob("#{dir}/**/*.rb") do |file|
     file_list << file
-    s = StepParser.new
-    s.read(file)
-    steps = s.steps
-    all_steps += steps
-    output.start_file(file)
-    steps.sort!(&sorter)
-    steps.each { |s| output.step(s) }
-    output.end_file
   end
 end
 
-output.start_all(file_list)
-all_steps.sort!(&sorter)
-all_steps.each { |s| output.step_link(s) }
-output.end_all
+# Output
+output.header
+output.start_directory(file_list)
+output.end_directory
+
+file_list.each do |file|
+  sp = StepParser.new
+  sp.read(file)
+  steps = sp.steps
+  output.start_file(file)
+  steps.sort!(&sorter)
+  steps.each { |s| output.step(s) }
+  output.end_file
+end
 
 output.footer
 output.close
