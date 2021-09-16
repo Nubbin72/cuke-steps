@@ -14,6 +14,9 @@ opts = OptionParser.new do |opts_|
   opts_.on('-o', '--output FILE', 'Output to FILE') do |file|
     options[:file] = file
   end
+  opts_.on('-u', '--url URL', 'Set URL to git repo') do |file|
+    options[:url] = file
+  end
   opts_.on('-f', '--format FMT', 'Select output format: html') do |format|
     options[:format] = format
   end
@@ -57,15 +60,16 @@ dirs.each do |dir|
 end
 
 # Output
+output.options(options[:url])
 output.header
 output.start_directory(file_list)
 output.end_directory
 
-file_list.each do |file|
+file_list.each_with_index do |file, index|
   sp = StepParser.new
   sp.read(file)
   steps = sp.steps
-  output.start_file(file)
+  output.start_file(file, index)
   steps.sort!(&sorter)
   steps.each { |s| output.step(s) }
   output.end_file
