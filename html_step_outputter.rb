@@ -61,6 +61,9 @@ class HtmlStepOutputter
       # tr:nth-child(even) {
       #   background-color: #dbdbdb;
       # }
+      .stepDesc{
+        font-weight: normal;
+      }
       .stepdoctable{
         font-weight: normal;
       }
@@ -158,6 +161,12 @@ class HtmlStepOutputter
     @file.puts %(<div>)
     @file.puts %(<hr noshade size=1>)
     @file.puts %(<a name="#{step[:anchor]}"><li class='stepdockey'>Step: <pre><code class="text">#{CGI.escapeHTML(step[:name])}</code></pre></a>)
+
+    # Output step description
+    unless step[:description].empty?
+      @file.puts %(<li class='stepdockey'>Description:)
+      @file.puts %(<br><div class="stepDesc">#{step[:description]}</div>)
+    end
 
     # Output parameters in table
     unless step[:headers].empty?

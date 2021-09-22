@@ -68,21 +68,27 @@ class StepParser
                 line_number: line_number,
                 comments: @comments,
                 headers: headers,
+                description: @description,
                 anchor: "#{File.basename(@current_file, '.*')}_#{line_number}" }
   end
 
   def parse_headers(lines)
     headers = {}
+    @description = ''
     lines.each do |line|
-      next unless line.match(/^ *# @(\w+).*/)
-
-      tag = line.sub(/^ *# @(\w+).*/, '\1')
-      value = line.sub(/^ *# *@(\w+) (.*)/, '\2').gsub('\ ', ' ')
-      if headers[tag]
-        headers[tag] = [headers[tag]] unless headers[tag].is_a?(Array)
-        headers[tag] << value
+      if line.match(/^ *# @(\w+).*/)
+        tag = line.sub(/^ *# @(\w+).*/, '\1')
+        value = line.sub(/^ *# *@(\w+) (.*)/, '\2').gsub('\ ', ' ')
+        if headers[tag]
+          headers[tag] = [headers[tag]] unless headers[tag].is_a?(Array)
+          headers[tag] << value
+        else
+          headers[tag] = value unless tag.nil? || value.nil?
+        end
       else
-        headers[tag] = value unless tag.nil? || value.nil?
+        next unless line.length > 2
+
+        @description = line.gsub('#', '')
       end
     end
     headers
