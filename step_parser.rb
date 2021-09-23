@@ -4,6 +4,7 @@
 
 # Step Parser
 class StepParser
+
   attr_reader :steps
 
   def initialize
@@ -102,4 +103,5 @@ class StepParser
     line = line.sub(%r{^(Given|When|Then|And|Transform) *(\()? */\^?(.*?)\$?/.*}, '\3')
     line.gsub('\ ', ' ')
   end
+
 end

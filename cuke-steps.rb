@@ -46,7 +46,7 @@ end
 puts "Writing output to file '#{options[:file]}'"
 
 # Sort step type name
-sorter = lambda do |a, b|
+sorter = ->(a, b) do
   a[:name].downcase <=> b[:name].downcase
 end
 
@@ -64,12 +64,13 @@ output.options(options[:url])
 output.header
 output.start_directory(file_list)
 output.end_directory
+output.title
 
-file_list.each_with_index do |file, index|
+file_list.each do |file|
   sp = StepParser.new
   sp.read(file)
   steps = sp.steps
-  output.start_file(file, index)
+  output.start_file(file)
   steps.sort!(&sorter)
   steps.each { |s| output.step(s) }
   output.end_file
